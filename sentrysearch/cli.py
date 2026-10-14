@@ -1,5 +1,6 @@
 """Click-based CLI entry point."""
 
+import json
 import os
 import platform
 import shutil
@@ -1478,7 +1479,8 @@ def overlay(video, output):
 # -----------------------------------------------------------------------
 
 @cli.command()
-def stats():
+@click.option("--json", "as_json", is_flag=True, default=False, help="Output stats as JSON.")
+def stats(as_json: bool = False):
     """Print index statistics."""
     from .store import SentryStore, detect_index
 
@@ -1487,6 +1489,21 @@ def stats():
         backend = "gemini"
     store = SentryStore(backend=backend, model=model)
     s = store.get_stats()
+
+    if as_json:
+        source_files = s.get("source_files", [])
+        existing_files = [f for f in source_files if os.path.exists(f)]
+        missing_files = [f for f in source_files if not os.path.exists(f)]
+        data = {
+            "backend": backend,
+            "model": model,
+            "total_chunks": s.get("total_chunks", 0),
+            "unique_source_files": s.get("unique_source_files", 0),
+            "source_files": existing_files,
+            "missing_files": missing_files,
+        }
+        click.echo(json.dumps(data, indent=2))
+        return
 
     if s["total_chunks"] == 0:
         click.echo("Index is empty. Run `sentrysearch index <directory>` first.")
