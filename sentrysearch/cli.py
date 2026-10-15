@@ -1484,9 +1484,12 @@ def stats(as_json: bool = False):
     """Print index statistics."""
     from .store import SentryStore, detect_index
 
-    detected_backend, model = detect_index()
-    backend = detected_backend if detected_backend is not None else "gemini"
-    store = SentryStore(backend=backend, model=model)
+    # detect_index() is the single source of truth for the backend: both
+    # outputs report it. store.get_backend() reads the collection metadata,
+    # so on a legacy index without embedding_backend metadata it answered
+    # "gemini" while detection answered "local" and the two outputs disagreed.
+    backend, model = detect_index()
+    store = SentryStore(backend=backend or "gemini", model=model)
     s = store.get_stats()
 
     missing_files = []
@@ -1498,7 +1501,7 @@ def stats(as_json: bool = False):
 
     if as_json:
         data = {
-            "backend": detected_backend,
+            "backend": backend,
             "model": model,
             "total_chunks": s["total_chunks"],
             "unique_source_files": s["unique_source_files"],
@@ -1514,7 +1517,7 @@ def stats(as_json: bool = False):
 
     click.echo(f"Total chunks:  {s['total_chunks']}")
     click.echo(f"Source files:  {s['unique_source_files']}")
-    backend_label = detected_backend or backend
+    backend_label = backend
     if model:
         backend_label += f" ({model})"
     click.echo(f"Backend:       {backend_label}")

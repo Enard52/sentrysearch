@@ -87,12 +87,17 @@ class TestStatsCommand:
                 "unique_source_files": 2,
                 "source_files": ["/a/video1.mp4", "/b/video2.mp4"],
             }
-            inst.get_backend.return_value = "local"
+            # A legacy dashcam_chunks_local index has no embedding_backend
+            # metadata, so get_backend() reports "gemini" for it. The text
+            # output must follow detect_index(), like --json does.
+            inst.get_backend.return_value = "gemini"
             MockStore.return_value = inst
             result = runner.invoke(cli, ["stats"])
             assert result.exit_code == 0
             assert "10" in result.output
             assert "qwen2b" in result.output
+            assert "local" in result.output
+            assert "gemini" not in result.output
 
     def test_stats_json_empty(self, runner):
         import json
