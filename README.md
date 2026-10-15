@@ -414,6 +414,9 @@ sentryblur prompt --last "road signs"   # → match_<...>_blurred.mp4
 # Show index info (files marked [missing] no longer exist on disk)
 sentrysearch stats
 
+# Output stats as machine-readable JSON (keys: backend, model, total_chunks, unique_source_files, source_files, missing_files)
+sentrysearch stats --json
+
 # Remove specific files by path substring
 sentrysearch remove path/to/footage
 

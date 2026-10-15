@@ -1484,22 +1484,25 @@ def stats(as_json: bool = False):
     """Print index statistics."""
     from .store import SentryStore, detect_index
 
-    backend, model = detect_index()
-    if backend is None:
-        backend = "gemini"
+    detected_backend, model = detect_index()
+    backend = detected_backend if detected_backend is not None else "gemini"
     store = SentryStore(backend=backend, model=model)
     s = store.get_stats()
 
+    missing_files = []
+    missing_set = set()
+    for f in s["source_files"]:
+        if not os.path.exists(f):
+            missing_files.append(f)
+            missing_set.add(f)
+
     if as_json:
-        source_files = s.get("source_files", [])
-        existing_files = [f for f in source_files if os.path.exists(f)]
-        missing_files = [f for f in source_files if not os.path.exists(f)]
         data = {
-            "backend": backend,
+            "backend": detected_backend,
             "model": model,
-            "total_chunks": s.get("total_chunks", 0),
-            "unique_source_files": s.get("unique_source_files", 0),
-            "source_files": existing_files,
+            "total_chunks": s["total_chunks"],
+            "unique_source_files": s["unique_source_files"],
+            "source_files": s["source_files"],
             "missing_files": missing_files,
         }
         click.echo(json.dumps(data, indent=2))
@@ -1511,14 +1514,13 @@ def stats(as_json: bool = False):
 
     click.echo(f"Total chunks:  {s['total_chunks']}")
     click.echo(f"Source files:  {s['unique_source_files']}")
-    backend_label = store.get_backend()
+    backend_label = detected_backend or backend
     if model:
         backend_label += f" ({model})"
     click.echo(f"Backend:       {backend_label}")
     click.echo("\nIndexed files:")
     for f in s["source_files"]:
-        exists = os.path.exists(f)
-        label = "" if exists else "  [missing]"
+        label = "" if f not in missing_set else "  [missing]"
         click.echo(f"  {f}{label}")
 
 
